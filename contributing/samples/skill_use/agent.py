@@ -1,0 +1,23 @@
+from google.adk.agents.llm_agent import LlmAgent
+from google.adk.tools.skill_tool import SkillTool
+from google.adk.tools.skill_tool import DEFAULT_SYSTEM_INSTRUCTION
+from google.adk.skills.file_system_client import FileSystemClient
+
+skills_client = FileSystemClient(
+      skills_base_path="~/.gemini/jetski/skills"
+)
+skill_manager_tool = SkillTool(client=skills_client)
+
+
+root_agent = LlmAgent(
+    model="gemini-2.5-flash",
+    name="spanner_agent",
+    description=(
+        "Agent to answer questions about Spanner database tables and"
+        " execute SQL queries."
+    ),
+    instruction=DEFAULT_SYSTEM_INSTRUCTION,
+    tools=[
+        skill_manager_tool
+    ],
+)

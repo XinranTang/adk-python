@@ -36,6 +36,7 @@ if TYPE_CHECKING:
   from .load_memory_tool import load_memory_tool as load_memory
   from .long_running_tool import LongRunningFunctionTool
   from .preload_memory_tool import preload_memory_tool as preload_memory
+  from .skill_tool import SkillTool, DEFAULT_SYSTEM_INSTRUCTION
   from .tool_context import ToolContext
   from .transfer_to_agent_tool import transfer_to_agent
   from .transfer_to_agent_tool import TransferToAgentTool
