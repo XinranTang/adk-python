@@ -40,7 +40,7 @@ class SkillTool(BaseTool):
 
   def __init__(
       self,
-      client: base_client.BaseClient,
+      client: BaseClient,
   ):
     super().__init__(
         # TODO: adjust description to promote function calling.

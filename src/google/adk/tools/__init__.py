@@ -87,6 +87,7 @@ _LAZY_MAPPING = {
     'MCPToolset': ('.mcp_tool.mcp_toolset', 'MCPToolset'),
     'McpToolset': ('.mcp_tool.mcp_toolset', 'McpToolset'),
     'ApiRegistry': ('.api_registry', 'ApiRegistry'),
+    'SkillTool': ('.skill_tool', 'SkillTool'),
 }
 
 __all__ = list(_LAZY_MAPPING.keys())

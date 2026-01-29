@@ -41,6 +41,25 @@ def load_directory_files(directory: pathlib.Path) -> Dict[str, str]:
   return files
 
 
+def find_skill_md(skill_dir: pathlib.Path) -> Optional[pathlib.Path]:
+  """Find the SKILL.md file in a skill directory.
+
+  Prefers SKILL.md (uppercase) but accepts skill.md (lowercase).
+
+  Args:
+      skill_dir: Path to the skill directory
+
+  Returns:
+      Path to the SKILL.md file, or None if not found
+  """
+  skill_dir = pathlib.Path(skill_dir)
+  for name in ("SKILL.md", "skill.md"):
+    path = skill_dir / name
+    if path.exists():
+      return path
+  return None
+
+
 def load_skill_md(skill_dir: pathlib.Path) -> tuple[models.Frontmatter, str]:
   """Locates and reads the SKILL.md file, parsing its frontmatter and body.
 
@@ -61,13 +80,7 @@ def load_skill_md(skill_dir: pathlib.Path) -> tuple[models.Frontmatter, str]:
     ValueError: If SKILL.md is not found, has invalid YAML in the frontmatter,
       or is missing required fields ('name', 'description').
   """
-  skill_dir = pathlib.Path(skill_dir)
-  skill_md = None
-  for name in ("SKILL.md", "skill.md"):
-    path = skill_dir / name
-    if path.exists():
-      skill_md = path
-      break
+  skill_md = find_skill_md(skill_dir)
 
   if skill_md is None:
     raise ValueError(f"SKILL.md not found in {skill_dir}")
@@ -99,10 +112,8 @@ def load_skill(skill_dir: pathlib.Path) -> models.Skill:
 
   if not skill_dir.is_dir():
     raise FileNotFoundError(f"Skill directory '{skill_dir}' not found.")
-  if (
-      not (skill_dir / "SKILL.md").exists()
-      and not (skill_dir / "skill.md").exists()
-  ):
+
+  if find_skill_md(skill_dir) is None:
     raise FileNotFoundError(f"SKILL.md not found in '{skill_dir}'.")
 
   # Load properties and manifest
@@ -111,7 +122,10 @@ def load_skill(skill_dir: pathlib.Path) -> models.Skill:
   # Load optional directories
   references = load_directory_files(skill_dir / "references")
   assets = load_directory_files(skill_dir / "assets")
-  scripts = load_directory_files(skill_dir / "scripts")
+  raw_scripts = load_directory_files(skill_dir / "scripts")
+  scripts = {
+      name: models.Script(src=content) for name, content in raw_scripts.items()
+  }
 
   resources = models.Resources(
       references=references,

@@ -4,7 +4,30 @@ import dataclasses
 from typing import Dict, List, Optional
 
 
-# TODO: built-in parser, skill to prompt converter, validators.
+################################################################################
+# Script Extensions
+#
+# Original script in design always requires a sandbox and often is insecure.
+# Here we customly expand it to allow registered safe function or even MCP if
+# we wish.
+################################################################################
+
+
+@dataclasses.dataclass
+class Script:
+  """Wrapper for script content."""
+
+  src: str
+
+  def __str__(self) -> str:
+    """Returns the string representation of the script content.
+
+    This ensures that any script type can be converted to a string, which is
+    useful for including the script in prompts or saving it to the file system.
+    """
+    return self.src
+
+
 @dataclasses.dataclass
 class Frontmatter:
   """L1 skill content: metadata parsed from SKILL.md frontmatter for skill discovery.

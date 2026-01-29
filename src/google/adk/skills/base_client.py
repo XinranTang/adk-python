@@ -4,7 +4,7 @@ import abc
 import html
 from typing import Dict, Optional
 
-from google.generativeai import types
+from google.genai import types
 
 from . import models
 from . import scripts
@@ -128,7 +128,6 @@ class BaseClient(abc.ABC):
   ##############################################################################
   # Optional utilities methods for a more versatile skill client.
   ##############################################################################
-  @abc.abstractmethod
   def execute(
       self,
       skill_id: str,
@@ -136,8 +135,12 @@ class BaseClient(abc.ABC):
   ) -> types.FunctionResponse:
     """Executes a script defined in a skill.
 
-    Note: This is not a public API. It is supported for user-defined secure
-    script execution, which does not strictly require a sandboxed environment.
+    Note: This implementation only supports `models.FunctionScript` which wraps
+    a python callable. It does not support executing arbitrary source code
+    (e.g. `models.Script` with raw string content) for security reasons.
+    Users are strongly recommended to override this method to support more
+    complex execution environments (e.g., sandboxed execution of arbitrary code)
+    or to integrate with specific runtime requirements.
 
     Args:
       skill_id: The unique name or id of the skill.
