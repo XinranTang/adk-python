@@ -1,7 +1,7 @@
 """FileSystemClient implementation."""
 
 import pathlib
-from typing import Any, List, Optional
+from typing import Any, Dict, Optional
 
 from typing_extensions import override
 
@@ -10,72 +10,70 @@ from . import file_loader
 from . import models
 
 
+_SKILL_MD = "SKILL.md"
+
+
 class FileSystemClient(base_client.BaseClient):
-  """Skill client that loads skills from the local file system."""
+  """Loads skills from a local directory."""
 
   def __init__(self, skills_base_path: str):
-    """Initializes the FileSystemClient.
+    self._skills_base_path = pathlib.Path(skills_base_path)
 
-    Args:
-      skills_base_path: The base path where skills are stored.
-    """
-    self._base_path = pathlib.Path(skills_base_path).expanduser().resolve()
+  @property
+  @override
+  def workspace(self) -> str:
+    return str(self._skills_base_path)
 
   @override
-  def list(self, source: Optional[str] = None) -> List[models.Frontmatter]:
-    """Lists available skills from the file system."""
-    skills = []
-    if not self._base_path.exists():
-      return []
+  def list(self, source: Optional[str] = None) -> Dict[str, models.Frontmatter]:
+    if not self._skills_base_path.is_dir():
+      # Return empty list if directory doesn't exist.
+      return {}
 
-    for item in self._base_path.iterdir():
-      if item.is_dir():
-        try:
-          frontmatter, _ = file_loader.load_skill_md(item)
-          skills.append(frontmatter)
-        except ValueError:
-          # Skip invalid skills or directories not containing SKILL.md
-          continue
+    skills = {}
+    # Find all manifest files in immediate subdirectories.
+    for manifest_path in sorted(self._skills_base_path.glob(f"*/{_SKILL_MD}")):
+      content = file_loader.read_file(manifest_path)
+      if content is None:
+        continue
+      frontmatter, _ = file_loader.parse_skill_md(content)
+      if frontmatter:
+        skills[manifest_path.parent.name] = frontmatter
     return skills
 
   @override
   def create(self, skill: models.Skill) -> models.Skill:
-    """Creates a new skill."""
-    raise NotImplementedError("Creating skills is not supported yet.")
+    raise NotImplementedError
 
   @override
   def delete(self, skill_id: str, version: Optional[str] = None) -> None:
-    """Deletes a skill."""
-    raise NotImplementedError("Deleting skills is not supported yet.")
-
-  @override
-  def retrieve(self, skill_id: str) -> models.Skill:
-    """Retrieves a specific skill by its ID (directory name)."""
-    # Assuming skill_id matches directory name for now
-    skill_dir = self._base_path / skill_id
-    if not skill_dir.exists():
-      raise ValueError(f"Skill '{skill_id}' not found at {skill_dir}")
-
-    try:
-      return file_loader.load_skill(skill_dir)
-    except (FileNotFoundError, ValueError) as e:
-      raise ValueError(f"Failed to load skill '{skill_id}': {e}") from e
-
-  @override
-  def enable(self, skill_id: str) -> None:
-    """Enables a skill."""
-    pass
+    raise NotImplementedError
 
   @override
   def disable(self, skill_id: str) -> None:
-    """Disables a skill."""
-    pass
+    raise NotImplementedError
 
   @override
-  def execute(
-      self,
-      skill_id: str,
-      function_call: Any,
-  ) -> Any:
-    """Executes a script defined in a skill."""
-    raise NotImplementedError("Script execution is not supported yet.")
+  def enable(self, skill_id: str) -> None:
+    raise NotImplementedError
+
+  @override
+  def retrieve(self, skill_id: str) -> models.Skill:
+    skill_path = self._skills_base_path / skill_id
+    return file_loader.load_skill(skill_path)
+
+  @override
+  def location(self, skill_id: str) -> Optional[str]:
+    """Find the SKILL.md file in a skill directory.
+
+    Prefers SKILL.md (uppercase) but accepts skill.md (lowercase).
+
+    Args:
+      skill_id: The ID of the skill.
+    """
+    skill_dir = self._skills_base_path / skill_id
+    path = file_loader.find_skill_md(skill_dir)
+    return str(path) if path else None
+
+
+

@@ -11,10 +11,9 @@ skill_manager_tool = SkillTool(client=skills_client)
 
 root_agent = LlmAgent(
     model="gemini-2.5-flash",
-    name="spanner_agent",
+    name="skill_use_agent",
     description=(
-        "Agent to answer questions about Spanner database tables and"
-        " execute SQL queries."
+        "A skill use agent."
     ),
     instruction=DEFAULT_SYSTEM_INSTRUCTION,
     tools=[

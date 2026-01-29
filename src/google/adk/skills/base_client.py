@@ -1,14 +1,15 @@
 """Base class for skill clients."""
 
 import abc
-from typing import List, Optional
+import html
+from typing import Dict, Optional
 
-from typing import Any
+from google.generativeai import types
 
 from . import models
+from . import scripts
 
 
-# TODO: the use of skill name or id differs from companies. Harmonize.
 class BaseClient(abc.ABC):
   """Abstract base class for skill clients."""
 
@@ -17,7 +18,7 @@ class BaseClient(abc.ABC):
   ##############################################################################
 
   @abc.abstractmethod
-  def list(self, source: Optional[str] = None) -> List[models.Frontmatter]:
+  def list(self, source: Optional[str] = None) -> Dict[str, models.Frontmatter]:
     """Lists available skills.
 
     Retrieves all Skills available to the workspace, including both pre-built
@@ -25,6 +26,9 @@ class BaseClient(abc.ABC):
 
     Args:
       source: The source to filter by (e.g., 'custom').
+
+    Returns:
+      A dictionary mapping skill path or ID to the skill's frontmatter.
     """
     raise NotImplementedError
 
@@ -100,14 +104,36 @@ class BaseClient(abc.ABC):
     raise NotImplementedError
 
   ##############################################################################
+  # File System Compatibility
+  #
+  # These methods adapt various clients to be compatible with a file system
+  # abstraction, reducing divergence from how skills operate in open source.
+  ##############################################################################
+
+  @property
+  @abc.abstractmethod
+  def workspace(self) -> str:
+    """Returns the workspace path of the skills."""
+    raise NotImplementedError
+
+  @abc.abstractmethod
+  def location(self, skill_id: str) -> Optional[str]:
+    """Returns the location of the skill definition file (SKILL.md).
+
+    Args:
+      skill_id: The unique path (name or id) of the skill.
+    """
+    raise NotImplementedError
+
+  ##############################################################################
   # Optional utilities methods for a more versatile skill client.
   ##############################################################################
   @abc.abstractmethod
   def execute(
       self,
       skill_id: str,
-      function_call: Any,
-  ) -> Any:
+      function_call: types.FunctionCall,
+  ) -> types.FunctionResponse:
     """Executes a script defined in a skill.
 
     Note: This is not a public API. It is supported for user-defined secure
@@ -120,4 +146,58 @@ class BaseClient(abc.ABC):
     Returns:
       The response from the function execution.
     """
-    raise NotImplementedError
+    skill = self.retrieve(skill_id)
+    script_id = function_call.name
+    script = skill.resources.get_script(script_id)
+
+    if script is None:
+      raise ValueError(
+          f"Script '{script_id}' for function '{function_call.name}' not"
+          f" found in skill '{skill_id}'"
+      )
+
+    if not isinstance(script, scripts.FunctionScript):
+      raise ValueError(
+          f"Script '{script_id}' is of type '{type(script).__name__}', which"
+          f" is not supported by {self.__class__.__name__}. Only"
+          " 'FunctionScript' is supported."
+      )
+
+    result = script.func(**function_call.args)
+    return types.FunctionResponse(
+        name=function_call.name, response={"result": result}
+    )
+
+  def format_skills_as_xml(self) -> str:
+    """Formats available skills into a standard XML string.
+
+    Returns:
+        XML string with <available_skills> block containing each skill's
+        name and description.
+    """
+    skills = self.list()
+    if not skills:
+      return "<available_skills>\n</available_skills>"
+
+    lines = ["<available_skills>"]
+
+    for skill_id, skill in skills.items():
+      lines.append("<skill>")
+      lines.append("<name>")
+      lines.append(html.escape(skill.name))
+      lines.append("</name>")
+      lines.append("<description>")
+      lines.append(html.escape(skill.description))
+      lines.append("</description>")
+
+      location = self.location(skill_id)
+      if location:
+        lines.append("<location>")
+        lines.append(location)
+        lines.append("</location>")
+
+      lines.append("</skill>")
+
+    lines.append("</available_skills>")
+
+    return "\n".join(lines)

@@ -1,8 +1,7 @@
 """Module for managing agent skills."""
 
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
-from typing import Any
 from typing_extensions import override
 
 from . import base_client
@@ -15,10 +14,16 @@ class InMemoryClient(base_client.BaseClient):
   def __init__(self):
     self._skills: Dict[str, models.Skill] = {}
 
+  @property
   @override
-  def list(self, source: Optional[str] = None) -> List[models.Frontmatter]:
+  def workspace(self) -> str:
+    """Returns the workspace path of the skills."""
+    return "/memory"
+
+  @override
+  def list(self, source: Optional[str] = None) -> Dict[str, models.Frontmatter]:
     """Lists available skills."""
-    return [skill.frontmatter for skill in self._skills.values()]
+    return {name: skill.frontmatter for name, skill in self._skills.items()}
 
   @override
   def create(self, skill: models.Skill) -> models.Skill:
@@ -49,6 +54,11 @@ class InMemoryClient(base_client.BaseClient):
     return self._skills[skill_id]
 
   @override
+  def location(self, skill_id: str) -> Optional[str]:
+    """Returns the location of the skill definition file (SKILL.md)."""
+    return f"{self.workspace}/{skill_id}/SKILL.md"
+
+  @override
   def enable(self, skill_id: str) -> None:
     """Enables a skill."""
     pass
@@ -57,13 +67,3 @@ class InMemoryClient(base_client.BaseClient):
   def disable(self, skill_id: str) -> None:
     """Disables a skill."""
     pass
-
-  @override
-  def execute(
-      self,
-      skill_id: str,
-      function_call: Any,
-  ) -> Any:
-    """Executes a script defined in a skill."""
-    # TODO: Implement script execution logic using self._executors
-    raise NotImplementedError("execute is not implemented yet.")
