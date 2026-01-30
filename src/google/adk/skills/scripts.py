@@ -7,7 +7,13 @@ import types
 import typing
 from typing import Any, Callable, Dict, List, Tuple, Union
 
+
 from . import models
+
+
+# ==============================================================================
+# HELPER FUNCTIONS
+# ==============================================================================
 
 
 def _bool_type(v: Union[str, bool]) -> bool:
@@ -120,6 +126,11 @@ def _normalize_args(args: Union[str, List[Any]]) -> List[str]:
   # Ensure all args are strings for argparse
   return [str(a) for a in flat_args]
 
+
+# ==============================================================================
+# For wrapping python functions to be executed like scripts with bash-style
+# argument parsing.
+# ==============================================================================
 
 class FunctionScript(models.Script):
   """Script defined by a callable function.

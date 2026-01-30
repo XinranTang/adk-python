@@ -28,6 +28,7 @@ class Script:
     return self.src
 
 
+
 @dataclasses.dataclass
 class Frontmatter:
   """L1 skill content: metadata parsed from SKILL.md frontmatter for skill discovery.
@@ -65,40 +66,40 @@ class Resources:
 
   references: Dict[str, str] = dataclasses.field(default_factory=dict)
   assets: Dict[str, str] = dataclasses.field(default_factory=dict)
-  scripts: Dict[str, str] = dataclasses.field(default_factory=dict)
+  scripts: Dict[str, Script] = dataclasses.field(default_factory=dict)
 
-  def get_reference(self, reference_path: str) -> Optional[str]:
+  def get_reference(self, reference_id: str) -> Optional[str]:
     """Get content of a reference file.
 
     Args:
-        reference_path: Relative path to the reference file
+        reference_id: Unique path or name of the reference file.
 
     Returns:
         Reference content as string, or None if not found
     """
-    return self.references.get(reference_path)
+    return self.references.get(reference_id)
 
-  def get_asset(self, asset_path: str) -> Optional[str]:
+  def get_asset(self, asset_id: str) -> Optional[str]:
     """Get content of an asset file.
 
     Args:
-        asset_path: Relative path to the asset file
+        asset_id: Unique path or name of the asset file.
 
     Returns:
         Asset content as string, or None if not found
     """
-    return self.assets.get(asset_path)
+    return self.assets.get(asset_id)
 
-  def get_script(self, script_path: str) -> Optional[str]:
+  def get_script(self, script_id: str) -> Optional[Script]:
     """Get content of a script file.
 
     Args:
-        script_path: Relative path to the script file
+        script_id: Unique path or name of the script file.
 
     Returns:
-        Script content as string, or None if not found
+        Script object, or None if not found
     """
-    return self.scripts.get(script_path)
+    return self.scripts.get(script_id)
 
   def list_references(self) -> List[str]:
     """List all available reference paths."""

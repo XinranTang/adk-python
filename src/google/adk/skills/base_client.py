@@ -5,7 +5,6 @@ import html
 from typing import Dict, Optional
 
 from google.genai import types
-
 from . import models
 from . import scripts
 
@@ -168,7 +167,9 @@ class BaseClient(abc.ABC):
 
     result = script.func(**function_call.args)
     return types.FunctionResponse(
-        name=function_call.name, response={"result": result}
+        call_id=function_call.id,
+        name=function_call.name,
+        content={"result": result},
     )
 
   def format_skills_as_xml(self) -> str:

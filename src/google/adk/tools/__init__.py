@@ -36,7 +36,7 @@ if TYPE_CHECKING:
   from .load_memory_tool import load_memory_tool as load_memory
   from .long_running_tool import LongRunningFunctionTool
   from .preload_memory_tool import preload_memory_tool as preload_memory
-  from .skill_tool import SkillTool, DEFAULT_SYSTEM_INSTRUCTION
+  from .skill_tool import SkillTool, SecureBashTool, DEFAULT_SYSTEM_INSTRUCTION, DEFAULT_SYSTEM_INSTRUCTION_V2
   from .tool_context import ToolContext
   from .transfer_to_agent_tool import transfer_to_agent
   from .transfer_to_agent_tool import TransferToAgentTool
@@ -88,6 +88,7 @@ _LAZY_MAPPING = {
     'McpToolset': ('.mcp_tool.mcp_toolset', 'McpToolset'),
     'ApiRegistry': ('.api_registry', 'ApiRegistry'),
     'SkillTool': ('.skill_tool', 'SkillTool'),
+    'SecureBashTool': ('.skill_tool', 'SecureBashTool'),
 }
 
 __all__ = list(_LAZY_MAPPING.keys())

@@ -1,7 +1,7 @@
-"""FileSystemClient implementation."""
+"""File-based skill client."""
 
 import pathlib
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 
 from typing_extensions import override
 
@@ -74,6 +74,3 @@ class FileSystemClient(base_client.BaseClient):
     skill_dir = self._skills_base_path / skill_id
     path = file_loader.find_skill_md(skill_dir)
     return str(path) if path else None
-
-
-
