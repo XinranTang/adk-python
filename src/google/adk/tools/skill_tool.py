@@ -53,7 +53,8 @@ This is very important:
 
 1. If a skill seems relevant to the current user query, you MUST use `secure_bash(command="cat", path="<SKILL_NAME>/SKILL.md")` to read its full instructions before proceeding.
 2. Once you have read the instructions, follow them exactly as documented before replying to the user. For example, If the instruction lists multiple steps, please make sure you complete all of them in order.
-3. Skill scripts MUST be executed using `secure_bash(command="sh", path="<SKILL_NAME>/scripts/<SCRIPT_NAME>", args={...})`. You MUST NOT use other tools to execute scripts within a skill's `scripts/` directory.
+3. Skill scripts MUST be executed using `secure_bash(command="sh", path="<SKILL_NAME>/scripts/<SCRIPT_NAME>", args={...})`. You MUST NOT use other tools like python, bash, etc., to execute scripts within a skill's `scripts/` directory.
+   For example, if the skill instruction asks you to run a python script, you MUST use `secure_bash(command="sh", path="<SKILL_NAME>/scripts/<SCRIPT_NAME>", args={...})` to execute it, NOT `python <SKILL_NAME>/scripts/<SCRIPT_NAME>`.
 4. The `cat` command is ONLY for viewing files within a skill's directory (e.g., `SKILL_NAME/SKILL.md`, `SKILL_NAME/references/*`, `SKILL_NAME/assets/*`, `SKILL_NAME/scripts/*`). Do NOT use `cat` to access files outside of skill directories.
 """
 
@@ -95,9 +96,9 @@ def _execute_skill_script(
 
   result = script.func(**function_call.args)
   return types.FunctionResponse(
-      call_id=function_call.id,
+      id=function_call.id,
       name=function_call.name,
-      content={"result": result},
+      response={"result": result},
   )
 
 
@@ -264,7 +265,7 @@ class SecureBashTool(BaseTool):
           self._skills[skill_name],
           types.FunctionCall(name=script_name, args=script_args),
       )
-      return {"output": response.content}
+      return {"output": response.response}
     except Exception as e:  # pylint: disable=broad-except
       return {
           "error": (
