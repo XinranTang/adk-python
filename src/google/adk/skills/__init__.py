@@ -5,8 +5,10 @@ from .file_loader import load_skill_md
 from .file_system_client import FileSystemClient
 from .in_memory_client import InMemoryClient
 from .models import Frontmatter, Resources, Skill
+from .skill_set import Skills
 from .validator import validate
 from .validator import validate_skill
+from . import prompts
 
 __all__ = [
     "BaseClient",
@@ -20,4 +22,6 @@ __all__ = [
     "Frontmatter",
     "Resources",
     "Skill",
+    "Skills",
+    "prompts",
 ]

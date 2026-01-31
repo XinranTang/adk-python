@@ -12,6 +12,9 @@ from google.genai import types
 
 from ..skills import BaseClient
 from ..skills import Frontmatter
+from ..skills import models
+from ..skills import prompts as prompt
+from ..skills import scripts
 from .base_tool import BaseTool
 from .tool_context import ToolContext
 
@@ -55,6 +58,49 @@ This is very important:
 """
 
 
+def _execute_skill_script(
+    skill: models.Skill,
+    function_call: types.FunctionCall,
+) -> types.FunctionResponse:
+  """Executes a script defined in a skill.
+
+  Note: This implementation only supports `models.FunctionScript` which wraps
+  a python callable. It does not support executing arbitrary source code
+  (e.g. `models.Script` with raw string content) for security reasons.
+  Users are strongly recommended to override this method to support more
+  complex execution environments (e.g., sandboxed execution of arbitrary code)
+  or to integrate with specific runtime requirements.
+
+  Args:
+    skill: The skill to execute script from.
+    function_call: The function call to execute.
+
+  Returns:
+    The response from the function execution.
+  """
+  script_id = function_call.name
+  script = skill.resources.get_script(script_id)
+
+  if script is None:
+    raise ValueError(
+        f"Script '{script_id}' for function '{function_call.name}' not"
+        f" found in skill '{skill.name}'"
+    )
+
+  if not isinstance(script, scripts.FunctionScript):
+    raise ValueError(
+        f"Script '{script_id}' is of type '{type(script).__name__}', which"
+        " is not supported by this tool. Only 'FunctionScript' is supported."
+    )
+
+  result = script.func(**function_call.args)
+  return types.FunctionResponse(
+      call_id=function_call.id,
+      name=function_call.name,
+      content={"result": result},
+  )
+
+
 class SecureBashTool(BaseTool):
   """A secure bash tool for skill interaction via in-memory functions.
 
@@ -64,7 +110,7 @@ class SecureBashTool(BaseTool):
 
   def __init__(
       self,
-      client: BaseClient,
+      skills: list[models.Skill],
   ):
     # TODO: support a skill search command, so model can discover skills.
     super().__init__(
@@ -84,12 +130,15 @@ class SecureBashTool(BaseTool):
             """
         ),
     )
-    self._client = client
+    self._skills = {skill.name: skill for skill in skills}
 
   def _get_declaration(self) -> Optional[types.FunctionDeclaration]:
     return types.FunctionDeclaration(
         name=self.name,
-        description=self.description + self._client.format_skills_as_xml(),
+        description=self.description
+        + prompt.format_skills_as_xml(
+            [s.frontmatter for s in self._skills.values()]
+        ),
         parameters=types.Schema(
             type=types.Type.OBJECT,
             properties={
@@ -121,21 +170,18 @@ class SecureBashTool(BaseTool):
       path = path[2:]
     parts = path.split("/", 1)
     skill_name = parts[0]
-    try:
-      self._client.retrieve(skill_name)
-      if len(parts) == 2:
-        return skill_name, parts[1]
-      else:
-        return skill_name, ""
-    except ValueError:
+    if skill_name not in self._skills:
       return None
+    if len(parts) == 2:
+      return skill_name, parts[1]
+    else:
+      return skill_name, ""
 
   def _view_file(self, skill_name: str, file_path: str) -> Any:
     """Views a file from a skill."""
-    try:
-      skill = self._client.retrieve(skill_name)
-    except ValueError as e:
-      return {"error": f"Skill '{skill_name}' not found: {e}."}
+    if skill_name not in self._skills:
+      return {"error": f"Skill '{skill_name}' not found."}
+    skill = self._skills[skill_name]
 
     if not file_path:
       return {"error": "file_path is required to view file."}
@@ -180,10 +226,9 @@ class SecureBashTool(BaseTool):
 
   def _list_files(self, skill_name: str, file_path: str) -> Any:
     """Lists files in a skill."""
-    try:
-      skill = self._client.retrieve(skill_name)
-    except ValueError as e:
-      return {"error": f"Skill '{skill_name}' not found: {e}."}
+    if skill_name not in self._skills:
+      return {"error": f"Skill '{skill_name}' not found."}
+    skill = self._skills[skill_name]
 
     if not file_path or file_path == ".":
       return {"output": "SKILL.md\nreferences/\nassets/\nscripts/"}
@@ -215,8 +260,8 @@ class SecureBashTool(BaseTool):
       script_name = file_path[len("scripts/") :]
 
     try:
-      response = self._client.execute(
-          skill_name,
+      response = _execute_skill_script(
+          self._skills[skill_name],
           types.FunctionCall(name=script_name, args=script_args),
       )
       return {"output": response.content}
@@ -283,7 +328,7 @@ class SkillTool(BaseTool):
 
   def __init__(
       self,
-      client: BaseClient,
+      skills: list[models.Skill],
   ):
     super().__init__(
         name="manage_skills",
@@ -302,12 +347,15 @@ class SkillTool(BaseTool):
             """
         ),
     )
-    self._client = client
+    self._skills = {skill.name: skill for skill in skills}
 
   def _get_declaration(self) -> Optional[types.FunctionDeclaration]:
     return types.FunctionDeclaration(
         name=self.name,
-        description=self.description + self._client.format_skills_as_xml(),
+        description=self.description
+        + prompt.format_skills_as_xml(
+            [s.frontmatter for s in self._skills.values()]
+        ),
         parameters=types.Schema(
             type=types.Type.OBJECT,
             properties={
@@ -369,16 +417,15 @@ class SkillTool(BaseTool):
     if not skill_name:
       return {"error": f"skill_name is required for action '{action}'."}
 
-    try:
-      skill = self._client.retrieve(skill_name)
-    except ValueError as e:
+    if skill_name not in self._skills:
       return {
           "error": (
-              f"Failed to retrieve skill '{skill_name}': {e}. Please check the"
+              f"Failed to retrieve skill '{skill_name}'. Please check the"
               " tool definition for a list of available skills and verify the"
               " skill name."
           )
       }
+    skill = self._skills[skill_name]
 
     file_path = args.get("file_path")
 
@@ -482,8 +529,8 @@ class SkillTool(BaseTool):
         script_name = file_path.split("scripts/")[-1]
 
       try:
-        response = self._client.execute(
-            skill_name,
+        response = _execute_skill_script(
+            self._skills[skill_name],
             types.FunctionCall(name=script_name, args=script_args),
         )
         return response.content

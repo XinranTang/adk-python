@@ -1,7 +1,6 @@
 """Base class for skill clients."""
 
 import abc
-import html
 from typing import Dict, Optional
 
 from google.genai import types
@@ -172,36 +171,4 @@ class BaseClient(abc.ABC):
         content={"result": result},
     )
 
-  def format_skills_as_xml(self) -> str:
-    """Formats available skills into a standard XML string.
 
-    Returns:
-        XML string with <available_skills> block containing each skill's
-        name and description.
-    """
-    skills = self.list()
-    if not skills:
-      return "<available_skills>\n</available_skills>"
-
-    lines = ["<available_skills>"]
-
-    for skill_id, skill in skills.items():
-      lines.append("<skill>")
-      lines.append("<name>")
-      lines.append(html.escape(skill.name))
-      lines.append("</name>")
-      lines.append("<description>")
-      lines.append(html.escape(skill.description))
-      lines.append("</description>")
-
-      location = self.location(skill_id)
-      if location:
-        lines.append("<location>")
-        lines.append(location)
-        lines.append("</location>")
-
-      lines.append("</skill>")
-
-    lines.append("</available_skills>")
-
-    return "\n".join(lines)
